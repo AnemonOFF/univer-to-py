@@ -1,10 +1,16 @@
-function Convert(targetFunc, limits) {
+/**
+ * Converts Excel-like formulas into Python code for linear programming using PuLP
+ * @param targetFunc - The objective function in Excel formula format (e.g., "=D3*D4+E2*E4<=10")
+ * @param limits - Array of constraints in Excel formula format
+ * @returns Python code as a string that solves the linear programming problem
+ */
+export default function Convert(targetFunc: string, limits: string[]): string {
   // Helper to extract all variable names (e.g., D3, E2)
-  function extractVariables(formulas) {
-    const varSet = new Set();
+  function extractVariables(formulas: string[]): string[] {
+    const varSet = new Set<string>();
     const regex = /([A-Z]+\d+)/g;
     formulas.forEach((f) => {
-      let m;
+      let m: RegExpExecArray | null;
       while ((m = regex.exec(f)) !== null) {
         varSet.add(m[1]);
       }
@@ -13,12 +19,15 @@ function Convert(targetFunc, limits) {
   }
 
   // Helper to convert Excel var to Python var (e.g., D3 -> x_D3)
-  function pyVar(excelVar) {
+  function pyVar(excelVar: string): string {
     return `x_${excelVar}`;
   }
 
   // Helper to convert Excel formula to Python expr
-  function convertFormula(formula, varMap) {
+  function convertFormula(
+    formula: string,
+    varMap: Record<string, string>
+  ): string {
     // Remove leading '=' if present
     let f = formula.trim();
     if (f.startsWith("=")) f = f.slice(1);
@@ -33,7 +42,7 @@ function Convert(targetFunc, limits) {
   // 1. Collect all variables
   const allFormulas = [targetFunc, ...limits];
   const variables = extractVariables(allFormulas);
-  const varMap = {};
+  const varMap: Record<string, string> = {};
   variables.forEach((v) => {
     varMap[v] = pyVar(v);
   });
@@ -45,24 +54,24 @@ function Convert(targetFunc, limits) {
 
   // 3. Parse objective and constraints
   // Assume objective is always <=, >=, or =
-  let objMatch = targetFunc.match(/^(=?.+?)(<=|>=|=)(.+)$/);
+  const objMatch = targetFunc.match(/^(=?.+?)(<=|>=|=)(.+)$/);
   if (!objMatch) throw new Error("Invalid target function format");
-  let [_, objExpr, objSense, objRHS] = objMatch;
-  objExpr = convertFormula(objExpr, varMap);
-  objRHS = objRHS.trim();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_, objExpr, objSense] = objMatch;
+  const convertedObjExpr = convertFormula(objExpr, varMap);
 
   // 4. Constraints
   const pyConstraints = limits.map((lim) => {
-    let m = lim.match(/^(=?.+?)(<=|>=|=)(.+)$/);
+    const m = lim.match(/^(=?.+?)(<=|>=|=)(.+)$/);
     if (!m) throw new Error("Invalid constraint format: " + lim);
-    let [__, left, sense, right] = m;
-    left = convertFormula(left, varMap);
-    right = right.trim();
-    return `${left} ${sense} ${right}`;
+    const [__, left, sense, right] = m;
+    const convertedLeft = convertFormula(left, varMap);
+    const convertedRight = right.trim();
+    return `${convertedLeft} ${sense} ${convertedRight}`;
   });
 
   // 5. Build Python code
-  let code = [];
+  const code: string[] = [];
   code.push("import pulp");
   code.push("");
   code.push("# Define variables");
@@ -70,7 +79,7 @@ function Convert(targetFunc, limits) {
   code.push("");
   code.push("# Define problem");
   // For <=, maximize; for >=, minimize; for =, default to maximize
-  let sense =
+  const sense =
     objSense === "<="
       ? "pulp.LpMaximize"
       : objSense === ">="
@@ -79,7 +88,7 @@ function Convert(targetFunc, limits) {
   code.push(`prob = pulp.LpProblem('LP_Problem', ${sense})`);
   code.push("");
   code.push("# Objective");
-  code.push(`prob += (${objExpr}), 'Objective'`);
+  code.push(`prob += (${convertedObjExpr}), 'Objective'`);
   code.push("");
   code.push("# Constraints");
   pyConstraints.forEach((c, i) => {
@@ -96,5 +105,3 @@ function Convert(targetFunc, limits) {
 
   return code.join("\n");
 }
-
-export default Convert;
