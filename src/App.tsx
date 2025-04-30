@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   createUniver,
@@ -8,19 +8,19 @@ import {
 } from "@univerjs/presets";
 import { UniverSheetsCorePreset } from "@univerjs/presets/preset-sheets-core";
 import UniverPresetSheetsCoreEnUS from "@univerjs/presets/preset-sheets-core/locales/en-US";
+import UniverPresetSheetsCoreRuRU from "@univerjs/presets/preset-sheets-core/locales/ru-RU";
 
 import "@univerjs/presets/lib/styles/preset-sheets-core.css";
-import { ExportButton } from "./components/export";
+import { UniverSheetsPythonExportPlugin } from "./plugin";
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [univerData, setUniverData] =
-    useState<ReturnType<typeof createUniver>>();
 
   useEffect(() => {
-    const { univerAPI, univer } = createUniver({
-      locale: LocaleType.EN_US,
+    const { univerAPI } = createUniver({
+      locale: LocaleType.RU_RU,
       locales: {
+        [LocaleType.RU_RU]: merge({}, UniverPresetSheetsCoreRuRU),
         [LocaleType.EN_US]: merge({}, UniverPresetSheetsCoreEnUS),
       },
       theme: defaultTheme,
@@ -29,6 +29,7 @@ export default function App() {
           container: containerRef.current ?? undefined,
         }),
       ],
+      plugins: [UniverSheetsPythonExportPlugin],
     });
 
     univerAPI.addEvent(univerAPI.Event.SheetEditEnded, (params) => {
@@ -41,7 +42,6 @@ export default function App() {
 
     const savedDataString = localStorage.getItem("univer-save");
     const savedData = savedDataString ? JSON.parse(savedDataString) : null;
-    setUniverData({ univer, univerAPI });
 
     const workbook = univerAPI.createWorkbook(
       savedData ?? { name: "Test Sheet" }
@@ -59,33 +59,5 @@ export default function App() {
     };
   }, []);
 
-  // Save every 5 seconds
-  // useEffect(() => {
-  //   if (!univerData) return;
-
-  //   const interval = setInterval(() => {
-  //     console.log("Saving...");
-  //     const data = univerData.univerAPI.getActiveWorkbook()?.save();
-  //     if (data) localStorage.setItem("univer-save", JSON.stringify(data));
-  //     console.log("Saved!");
-  //   }, 5000);
-
-  //   return () => {
-  //     clearInterval(interval);
-  //   };
-  // }, [univerData]);
-
-  return (
-    <div className="univer__wrapper">
-      <aside className="univer__sidebar">
-        {univerData && (
-          <ExportButton
-            univer={univerData.univer}
-            univerApi={univerData.univerAPI}
-          />
-        )}
-      </aside>
-      <div ref={containerRef} className="univer__app"></div>
-    </div>
-  );
+  return <div ref={containerRef} className="univer__app"></div>;
 }

@@ -35,7 +35,7 @@ describe("Convert function", () => {
     expect(result).toContain("x_E3 = pulp.LpVariable");
 
     // Check that variables are used correctly in the objective
-    expect(result).toContain("x_D3 * x_D4 + x_E3 * x_E4");
+    expect(result).toContain("x_D3*x_D4+x_E3*x_E4");
   });
 
   test("should handle equality constraints", () => {
@@ -45,7 +45,7 @@ describe("Convert function", () => {
 
     const result = Convert(targetFunc, limits, variablesData);
 
-    expect(result).toContain("x_D4 + x_E4 = 3");
+    expect(result).toContain("x_D4+x_E4 = 3");
   });
 
   test("should handle multiple variables in constraints", () => {
@@ -60,8 +60,8 @@ describe("Convert function", () => {
     expect(result).toContain("x_E2 = 3");
 
     // Check that constraints use the variables correctly
-    expect(result).toContain("x_D2 * x_D4 + x_E2 * x_E4 <= 10");
-    expect(result).toContain("x_D4 + x_E4 >= 3");
+    expect(result).toContain("x_D2*x_D4+x_E2*x_E4 <= 10");
+    expect(result).toContain("x_D4+x_E4 >= 3");
   });
 
   test("should throw error for invalid constraint format", () => {
