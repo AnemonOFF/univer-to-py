@@ -27,7 +27,7 @@ const download = (text: string) => {
 const exportPython = (worksheet: Worksheet) => {
   const sheetSnapshot = worksheet.getSnapshot();
 
-  const func = sheetSnapshot.cellData[1][0].f;
+  const func = sheetSnapshot.cellData[1][0].f?.trim();
   console.log("Целевая функция", func);
   if (!func) {
     alert("Укажите целевую функцию в ячейке A1");
@@ -37,11 +37,13 @@ const exportPython = (worksheet: Worksheet) => {
   const restrictions = [];
   for (const [, row] of Object.entries(sheetSnapshot.cellData)) {
     const cell = row[1];
-    if (cell && cell.f) restrictions.push(cell.f);
+    if (cell && cell.f) restrictions.push(cell.f.trim());
   }
   console.log("Ограничения", restrictions);
 
-  const variables = extractVariables([func, ...restrictions]);
+  const variables = extractVariables([func, ...restrictions]).map((v) =>
+    v.trim()
+  );
   console.log("Переменные", variables);
   const varData = variables.reduce<Record<string, string>>((res, variable) => {
     const row = A1.getRow(variable) - 1;
@@ -51,9 +53,9 @@ const exportPython = (worksheet: Worksheet) => {
       !Object.keys(sheetSnapshot.cellData[row]).includes(col.toString())
     )
       return res;
-    const val = sheetSnapshot.cellData[row][col].v;
+    const val = sheetSnapshot.cellData[row][col].v?.toString().trim();
     if (!val) return res;
-    return { [variable]: val.toString(), ...res };
+    return { [variable]: val, ...res };
   }, {});
   console.log("Переменные", varData);
 
