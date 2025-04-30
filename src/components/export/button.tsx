@@ -28,8 +28,12 @@ const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
     const fWorksheet = fWorkbook.getActiveSheet();
     const sheetSnapshot = fWorksheet.getSheet().getSnapshot();
 
-    const func = sheetSnapshot.cellData[1][0].f as string;
+    const func = sheetSnapshot.cellData[1][0].f;
     console.log("Целевая функция", func);
+    if (!func) {
+      alert("Укажите целевую функцию в ячейке A1");
+      return;
+    }
 
     const restrictions = [];
     for (const [, row] of Object.entries(sheetSnapshot.cellData)) {
@@ -57,8 +61,15 @@ const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
     );
     console.log("Переменные", varData);
 
-    const pythonCode = Convert(func, restrictions, varData);
-    download(pythonCode);
+    try {
+      const pythonCode = Convert(func, restrictions, varData);
+      download(pythonCode);
+    } catch (ex) {
+      alert(
+        "Во время конвертации произошла ошибка, проверьте правильность формул"
+      );
+      throw ex;
+    }
   };
 
   return <Button onClick={onExport}>Экспорт</Button>;
