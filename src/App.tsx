@@ -10,7 +10,7 @@ import { UniverSheetsCorePreset } from "@univerjs/presets/preset-sheets-core";
 import UniverPresetSheetsCoreEnUS from "@univerjs/presets/preset-sheets-core/locales/en-US";
 
 import "@univerjs/presets/lib/styles/preset-sheets-core.css";
-import Export from "./export";
+import { ExportButton } from "./components/export";
 
 export default function App() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -44,7 +44,10 @@ export default function App() {
     <div className="univer__wrapper">
       <aside className="univer__sidebar">
         {univerData && (
-          <Export univer={univerData.univer} univerApi={univerData.univerAPI} />
+          <ExportButton
+            univer={univerData.univer}
+            univerApi={univerData.univerAPI}
+          />
         )}
       </aside>
       <div ref={containerRef} className="univer__app"></div>

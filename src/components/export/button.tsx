@@ -1,7 +1,8 @@
 import { FUniver, Univer } from "@univerjs/presets";
 import React from "react";
+import { Button } from "../ui/button";
 
-const Export: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
+const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
   univerApi,
 }) => {
   const onExport = () => {
@@ -18,7 +19,7 @@ const Export: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
     console.log("Ограничения", restrictions);
   };
 
-  return <button onClick={onExport}>Экспорт</button>;
+  return <Button onClick={onExport}>Экспорт</Button>;
 };
 
-export default React.memo(Export);
+export default React.memo(ExportButton);
