@@ -1,23 +1,32 @@
 /**
+ * Extracts all unique variable names from Excel-like formulas
+ * @param formulas - Array of formulas in Excel format
+ * @returns Array of unique variable names (e.g., ["D3", "E4"])
+ */
+export function extractVariables(formulas: string[]): string[] {
+  const varSet = new Set<string>();
+  const regex = /([A-Z]+\d+)/g;
+  formulas.forEach((f) => {
+    let m: RegExpExecArray | null;
+    while ((m = regex.exec(f)) !== null) {
+      varSet.add(m[1]);
+    }
+  });
+  return Array.from(varSet);
+}
+
+/**
  * Converts Excel-like formulas into Python code for linear programming using PuLP
  * @param targetFunc - The objective function in Excel formula format (e.g., "=D3*D4+E3*E4")
  * @param limits - Array of constraints in Excel formula format
+ * @param variablesData - Map of known variable values (e.g., { "D3": "5", "E4": "10" })
  * @returns Python code as a string that solves the linear programming problem
  */
-export default function Convert(targetFunc: string, limits: string[]): string {
-  // Helper to extract all variable names (e.g., D3, E2)
-  function extractVariables(formulas: string[]): string[] {
-    const varSet = new Set<string>();
-    const regex = /([A-Z]+\d+)/g;
-    formulas.forEach((f) => {
-      let m: RegExpExecArray | null;
-      while ((m = regex.exec(f)) !== null) {
-        varSet.add(m[1]);
-      }
-    });
-    return Array.from(varSet);
-  }
-
+export default function Convert(
+  targetFunc: string,
+  limits: string[],
+  variablesData: Record<string, string>
+): string {
   // Helper to convert Excel var to Python var (e.g., D3 -> x_D3)
   function pyVar(excelVar: string): string {
     return `x_${excelVar}`;
@@ -41,22 +50,47 @@ export default function Convert(targetFunc: string, limits: string[]): string {
 
   // 1. Collect all variables
   const allFormulas = [targetFunc, ...limits];
-  const variables = extractVariables(allFormulas);
+  const allVariables = extractVariables(allFormulas);
+
+  // Separate known and unknown variables
+  const knownVariables = Object.keys(variablesData);
+  const unknownVariables = allVariables.filter(
+    (v) => !knownVariables.includes(v)
+  );
+
+  // Create variable mapping
   const varMap: Record<string, string> = {};
-  variables.forEach((v) => {
-    varMap[v] = pyVar(v);
+  allVariables.forEach((v) => {
+    if (knownVariables.includes(v)) {
+      varMap[v] = pyVar(v);
+    } else {
+      varMap[v] = pyVar(v);
+    }
   });
 
   // 2. Build variable declarations
-  const varDecls = variables.map(
+  const code: string[] = [];
+  code.push("import pulp");
+  code.push("");
+  code.push("# Define known variables");
+  knownVariables.forEach((v) => {
+    code.push(`${pyVar(v)} = ${variablesData[v]}`);
+  });
+  code.push("");
+  code.push("# Define optimization variables");
+  const varDecls = unknownVariables.map(
     (v) => `${pyVar(v)} = pulp.LpVariable('${v}', lowBound=0)`
   );
-
-  // 3. Parse objective and constraints
-  // Target function is always the objective to maximize
+  code.push(...varDecls);
+  code.push("");
+  code.push("# Define problem");
+  code.push("prob = pulp.LpProblem('LP_Problem', pulp.LpMaximize)");
+  code.push("");
+  code.push("# Objective");
   const objExpr = convertFormula(targetFunc, varMap);
-
-  // 4. Constraints
+  code.push(`prob += (${objExpr}), 'Objective'`);
+  code.push("");
+  code.push("# Constraints");
   const pyConstraints = limits.map((lim) => {
     const m = lim.match(/^(=?.+?)(<=|>=|=)(.+)$/);
     if (!m) throw new Error("Invalid constraint format: " + lim);
@@ -65,21 +99,6 @@ export default function Convert(targetFunc: string, limits: string[]): string {
     const convertedRight = right.trim();
     return `${convertedLeft} ${sense} ${convertedRight}`;
   });
-
-  // 5. Build Python code
-  const code: string[] = [];
-  code.push("import pulp");
-  code.push("");
-  code.push("# Define variables");
-  code.push(...varDecls);
-  code.push("");
-  code.push("# Define problem");
-  code.push("prob = pulp.LpProblem('LP_Problem', pulp.LpMaximize)");
-  code.push("");
-  code.push("# Objective");
-  code.push(`prob += (${objExpr}), 'Objective'`);
-  code.push("");
-  code.push("# Constraints");
   pyConstraints.forEach((c, i) => {
     code.push(`prob += (${c}), 'Constraint_${i + 1}'`);
   });

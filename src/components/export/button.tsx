@@ -1,7 +1,8 @@
 import { FUniver, Univer } from "@univerjs/presets";
 import React from "react";
 import { Button } from "../ui/button";
-import { Convert } from "@/converter";
+import { Convert, extractVariables } from "@/converter";
+import A1 from "@flighter/a1-notation";
 
 const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
   univerApi,
@@ -26,8 +27,10 @@ const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
     const fWorkbook = univerApi.getActiveWorkbook()!;
     const fWorksheet = fWorkbook.getActiveSheet();
     const sheetSnapshot = fWorksheet.getSheet().getSnapshot();
+
     const func = sheetSnapshot.cellData[1][0].f as string;
     console.log("Целевая функция", func);
+
     const restrictions = [];
     for (const [, row] of Object.entries(sheetSnapshot.cellData)) {
       const cell = row[1];
@@ -35,7 +38,26 @@ const ExportButton: React.FC<{ univer: Univer; univerApi: FUniver }> = ({
     }
     console.log("Ограничения", restrictions);
 
-    const pythonCode = Convert(func, restrictions);
+    const variables = extractVariables([func, ...restrictions]);
+    console.log("Переменные", variables);
+    const varData = variables.reduce<Record<string, string>>(
+      (res, variable) => {
+        const row = A1.getRow(variable) - 1;
+        const col = A1.getCol(variable) - 1;
+        if (
+          !Object.keys(sheetSnapshot.cellData).includes(row.toString()) ||
+          !Object.keys(sheetSnapshot.cellData[row]).includes(col.toString())
+        )
+          return res;
+        const val = sheetSnapshot.cellData[row][col].v;
+        if (!val) return res;
+        return { [variable]: val.toString(), ...res };
+      },
+      {}
+    );
+    console.log("Переменные", varData);
+
+    const pythonCode = Convert(func, restrictions, varData);
     download(pythonCode);
   };
 

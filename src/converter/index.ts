@@ -1,1 +1,1 @@
-export { default as Convert } from "./converter";
+export { default as Convert, extractVariables } from "./converter";
