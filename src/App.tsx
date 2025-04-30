@@ -31,14 +31,49 @@ export default function App() {
       ],
     });
 
+    univerAPI.addEvent(univerAPI.Event.SheetEditEnded, (params) => {
+      console.log("Saving...");
+      const { workbook } = params;
+      const data = workbook.save();
+      if (data) localStorage.setItem("univer-save", JSON.stringify(data));
+      console.log("Saved!");
+    });
+
+    const savedDataString = localStorage.getItem("univer-save");
+    const savedData = savedDataString ? JSON.parse(savedDataString) : null;
     setUniverData({ univer, univerAPI });
 
-    univerAPI.createWorkbook({ name: "Test Sheet" });
+    const workbook = univerAPI.createWorkbook(
+      savedData ?? { name: "Test Sheet" }
+    );
+
+    if (!savedData) {
+      const sheet = workbook.getActiveSheet();
+      sheet.getRange("A1").setValue("Целевая функция");
+      sheet.getRange("B1").setValue("Ограничения");
+      sheet.getRange("C1").setValue("Параметры");
+    }
 
     return () => {
       univerAPI.dispose();
     };
   }, []);
+
+  // Save every 5 seconds
+  // useEffect(() => {
+  //   if (!univerData) return;
+
+  //   const interval = setInterval(() => {
+  //     console.log("Saving...");
+  //     const data = univerData.univerAPI.getActiveWorkbook()?.save();
+  //     if (data) localStorage.setItem("univer-save", JSON.stringify(data));
+  //     console.log("Saved!");
+  //   }, 5000);
+
+  //   return () => {
+  //     clearInterval(interval);
+  //   };
+  // }, [univerData]);
 
   return (
     <div className="univer__wrapper">
