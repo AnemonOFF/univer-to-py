@@ -1,6 +1,6 @@
 /**
  * Converts Excel-like formulas into Python code for linear programming using PuLP
- * @param targetFunc - The objective function in Excel formula format (e.g., "=D3*D4+E2*E4<=10")
+ * @param targetFunc - The objective function in Excel formula format (e.g., "=D3*D4+E3*E4")
  * @param limits - Array of constraints in Excel formula format
  * @returns Python code as a string that solves the linear programming problem
  */
@@ -53,18 +53,14 @@ export default function Convert(targetFunc: string, limits: string[]): string {
   );
 
   // 3. Parse objective and constraints
-  // Assume objective is always <=, >=, or =
-  const objMatch = targetFunc.match(/^(=?.+?)(<=|>=|=)(.+)$/);
-  if (!objMatch) throw new Error("Invalid target function format");
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_, objExpr, objSense] = objMatch;
-  const convertedObjExpr = convertFormula(objExpr, varMap);
+  // Target function is always the objective to maximize
+  const objExpr = convertFormula(targetFunc, varMap);
 
   // 4. Constraints
   const pyConstraints = limits.map((lim) => {
     const m = lim.match(/^(=?.+?)(<=|>=|=)(.+)$/);
     if (!m) throw new Error("Invalid constraint format: " + lim);
-    const [__, left, sense, right] = m;
+    const [, left, sense, right] = m;
     const convertedLeft = convertFormula(left, varMap);
     const convertedRight = right.trim();
     return `${convertedLeft} ${sense} ${convertedRight}`;
@@ -78,17 +74,10 @@ export default function Convert(targetFunc: string, limits: string[]): string {
   code.push(...varDecls);
   code.push("");
   code.push("# Define problem");
-  // For <=, maximize; for >=, minimize; for =, default to maximize
-  const sense =
-    objSense === "<="
-      ? "pulp.LpMaximize"
-      : objSense === ">="
-      ? "pulp.LpMinimize"
-      : "pulp.LpMaximize";
-  code.push(`prob = pulp.LpProblem('LP_Problem', ${sense})`);
+  code.push("prob = pulp.LpProblem('LP_Problem', pulp.LpMaximize)");
   code.push("");
   code.push("# Objective");
-  code.push(`prob += (${convertedObjExpr}), 'Objective'`);
+  code.push(`prob += (${objExpr}), 'Objective'`);
   code.push("");
   code.push("# Constraints");
   pyConstraints.forEach((c, i) => {
