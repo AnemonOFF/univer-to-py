@@ -1,54 +1,76 @@
-# React + TypeScript + Vite
+# Плагин для Univer Sheets
+Для преобразования условий задач математического программирования в готовый Python-код с использованием библиотеки PuLP
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Как пользоваться
 
-Currently, two official plugins are available:
+1. В ячейке A2 написать целевую функцию (средствами формул Univer)
+2. В столбце B (начиная со второй строки) записать ограничения (средствами формул Univer)
+3. В столбце C (начиная со второй строки) записать названия параметров, в последующих столбцах записать значения, на которые ссылаются ограничения и целевая функция
+4. Обратите внимание, что искомые параметры не должны быть записаны (то есть в формулах они должны ссылаться на пустую ячейку)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Структура репозитория
 
-## Expanding the ESLint configuration
+Данный репозиторий представляет собой React приложение, запускающее Univer Sheets и встраивает в него плагин.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Весь код плагина находиться в директории `/src/plugin`
+В `src/App.tsx` происходит создание объекта Univer, интеграция плагина и система локальных сохранений таблицы
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## Запуск приложения
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Для запуска этого приложения необходимо:
+1. Склонировать репозиторий в локальную папку
+2. Установить NodeJS версии 16 или новее
+3. Установить зависимости `npm i`
+4. Собрать приложение `npm run build`
+5. Запустить приложение `npm run preview`
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Для минимальной работы достаточно взять код плагина (`/src/plugin`) и создать объект Univer:
+1. Создание React приложения с помощью Vite: `npm create vite@latest univer-app -- --template react-ts`
+2. Установка библиотек для работы Univer и плагина `npm i @flighter/a1-notation @univerjs/presets`
+3. Добавить код плагина в папку `/src/plugin`
+4. В файле `/src/App.tsx` написать следующий код:
+```tsx
+import { useEffect, useRef } from "react";
+import {
+  createUniver,
+  defaultTheme,
+  LocaleType,
+  merge,
+} from "@univerjs/presets";
+import { UniverSheetsCorePreset } from "@univerjs/presets/preset-sheets-core";
+import UniverPresetSheetsCoreEnUS from "@univerjs/presets/preset-sheets-core/locales/en-US";
+import UniverPresetSheetsCoreRuRU from "@univerjs/presets/preset-sheets-core/locales/ru-RU";
+import "@univerjs/presets/lib/styles/preset-sheets-core.css";
+import { UniverSheetsPythonExportPlugin } from "./plugin";
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+export default function App() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const { univerAPI } = createUniver({
+      locale: LocaleType.RU_RU,
+      locales: {
+        [LocaleType.RU_RU]: merge({}, UniverPresetSheetsCoreRuRU),
+        [LocaleType.EN_US]: merge({}, UniverPresetSheetsCoreEnUS),
+      },
+      theme: defaultTheme,
+      presets: [
+        UniverSheetsCorePreset({
+          container: containerRef.current ?? undefined,
+        }),
+      ],
+      plugins: [UniverSheetsPythonExportPlugin],
+    });
+
+    univerAPI.createWorkbook(
+      { name: "Test Sheet" }
+    );
+    
+    return () => {
+      univerAPI.dispose();
+    };
+  }, []);
+
+  return <div ref={containerRef} className="univer__app"></div>;
+}
 ```
